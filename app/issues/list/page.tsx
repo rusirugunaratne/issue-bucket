@@ -1,11 +1,12 @@
-import { Table } from "@radix-ui/themes"
+import Pagination from "@/app/components/Pagination"
 import prisma from "@/prisma/client"
-import IssueActions from "./IssueActions"
-import { IssueStatusBadge, Link } from "../../components"
 import { Status } from "@prisma/client"
+import IssueActions from "./IssueActions"
+import IssueTable, { IssueQuery, columnNames } from "./IssueTable"
+import { Flex } from "@radix-ui/themes"
 
 interface Props {
-  searchParams: { status: Status }
+  searchParams: IssueQuery
 }
 
 const IssuesPage = async ({ searchParams }: Props) => {
@@ -14,47 +15,34 @@ const IssuesPage = async ({ searchParams }: Props) => {
     ? searchParams.status
     : undefined
 
+  const where = { status }
+
+  const orderBy = columnNames.includes(searchParams.orderBy)
+    ? { [searchParams.orderBy]: "asc" }
+    : undefined
+
+  const page = parseInt(searchParams.page) || 1
+  const pageSize = 10
+
   const issues = await prisma.issue.findMany({
-    where: {
-      status,
-    },
+    where,
+    orderBy,
+    skip: (page - 1) * pageSize,
+    take: pageSize,
   })
 
+  const issueCount = await prisma.issue.count({ where })
+
   return (
-    <div>
+    <Flex gap='3' direction='column'>
       <IssueActions />
-      <Table.Root variant='surface'>
-        <Table.Header>
-          <Table.Row>
-            <Table.ColumnHeaderCell>Issue</Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell className='hidden md:table-cell'>
-              Status
-            </Table.ColumnHeaderCell>
-            <Table.ColumnHeaderCell className='hidden md:table-cell'>
-              Created
-            </Table.ColumnHeaderCell>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {issues.map((issue) => (
-            <Table.Row key={issue.id}>
-              <Table.Cell>
-                <Link href={`/issues/${issue.id}`}>{issue.title}</Link>
-                <div className='block md:hidden'>
-                  <IssueStatusBadge status={issue.status} />
-                </div>
-              </Table.Cell>
-              <Table.Cell className='hidden md:table-cell'>
-                <IssueStatusBadge status={issue.status} />
-              </Table.Cell>
-              <Table.Cell className='hidden md:table-cell'>
-                {issue.createdAt.toDateString()}
-              </Table.Cell>
-            </Table.Row>
-          ))}
-        </Table.Body>
-      </Table.Root>
-    </div>
+      <IssueTable searchParams={searchParams} issues={issues} />
+      <Pagination
+        currentPage={page}
+        itemCount={issueCount}
+        pageSize={pageSize}
+      />
+    </Flex>
   )
 }
 
