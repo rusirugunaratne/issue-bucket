@@ -1,5 +1,13 @@
 import Image from "next/image"
+import LatestIssues from "./LatestIssues"
+import prisma from "@/prisma/client"
+import IssueSummary from "./IssueSummary"
 
-export default function Home() {
-  return <h1>Hello World</h1>
+export default async function Home() {
+  const open = await prisma.issue.count({ where: { status: "OPEN" } })
+  const inProgress = await prisma.issue.count({
+    where: { status: "IN_PROGRESS" },
+  })
+  const closed = await prisma.issue.count({ where: { status: "CLOSED" } })
+  return <IssueSummary closed={closed} inProgress={inProgress} open={open} />
 }
